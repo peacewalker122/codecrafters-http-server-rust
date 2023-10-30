@@ -40,12 +40,12 @@ fn handle_connection(mut stream: TcpStream) {
         true => {
             if let Some(x) = pathwithdata.get(0) {
                 if *x == "echo" {
-                    let contentlength =
-                        format!("Content-length: {}\r\n\r\n", pathwithdata[1].len());
+                    let contentlength = format!("Content-length: {}\r\n", pathwithdata[1].len());
                     let msg = vec![
-                        "HTTP/1.1 200 OK\r\n\r\n",
-                        "Content-Type: text/plain\r\n\r\n",
+                        "HTTP/1.1 200 OK\r\n",
+                        "Content-Type: text/plain\r\n",
                         &contentlength,
+                        "\r\n",
                         pathwithdata[1],
                     ];
 
