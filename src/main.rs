@@ -27,15 +27,73 @@ fn handle_connection(mut stream: TcpStream) {
     let request_line = buf_reader.lines().next().unwrap().unwrap();
     let chunks: Vec<&str> = request_line.split_whitespace().collect();
 
-    let path = chunks[1];
+    let path = chunks[1]; //ex: /echo/abc
 
-    if path == "/" {
-        stream
-            .write("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
-            .expect("Unable to write to stream");
-    } else {
-        stream
-            .write("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
-            .expect("Unable to write to stream");
+    let pathwithdata: Vec<&str> = path.split("/").filter(|x| x.len() > 0).collect();
+
+    // dbg!(path);
+    // dbg!(pathwithdata);
+
+    let containecho = path.contains("echo");
+
+    match containecho {
+        true => {
+            if let Some(x) = pathwithdata.get(0) {
+                if *x == "echo" {
+                    let contentlength =
+                        format!("Content-length: {}\r\n\r\n", pathwithdata[1].len());
+                    let msg = vec![
+                        "HTTP/1.1 200 OK\r\n\r\n",
+                        "Content-Type: text/plain\r\n\r\n",
+                        &contentlength,
+                        pathwithdata[1],
+                    ];
+
+                    stream
+                        .write_all(handle_content(&msg).as_bytes())
+                        .expect("Unable to write to stream");
+                }
+            }
+        }
+        false => {
+            match path {
+                "/" => stream
+                    .write("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
+                    .expect("Unable to write to stream"),
+                _ => stream
+                    .write("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
+                    .expect("Unable to write to stream"),
+            };
+        }
+    }
+}
+
+fn handle_content(val: &Vec<&str>) -> String {
+    let mut result = String::new();
+
+    for i in 0..val.len() {
+        result.push_str(val[i]);
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod test {
+    use crate::handle_content;
+
+    #[test]
+    fn test_handle_content() {
+        let contentlength = format!("Content-length: {}\r\n\r\n", 10);
+        let res = handle_content(&vec![
+            "HTTP/1.1 200 OK\r\n\r\n",
+            "Content-Type: text/plain\r\n\r\n",
+            &contentlength,
+            "this-is-the-message\r\n\r\n",
+        ]);
+
+        dbg!(&res);
+
+        assert!(res.len() > 0)
     }
 }
