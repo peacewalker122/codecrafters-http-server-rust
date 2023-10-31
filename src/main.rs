@@ -3,6 +3,7 @@ use request::HTTPRequest;
 use std::{
     io::Write,
     net::{TcpListener, TcpStream},
+    thread,
 };
 
 mod handler;
@@ -13,16 +14,16 @@ fn main() {
     // println!("Logs from your program will appear here!");
 
     let listener = TcpListener::bind("127.0.0.1:4221").unwrap();
-
+    // let mut threads = Vec::new();
     for stream in listener.incoming() {
-        match stream {
+        let _thread = thread::spawn(|| match stream {
             Ok(mut _stream) => {
                 let _ = handle_connection(_stream);
             }
             Err(e) => {
                 println!("error: {}", e);
             }
-        }
+        });
     }
 }
 

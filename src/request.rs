@@ -32,9 +32,10 @@ impl From<&TcpStream> for HTTPRequest {
             .unwrap();
         let req: Vec<&str> = req.split("\r\n").filter(|x| x.len() > 0).collect();
 
-        dbg!(&req);
         let chunks: Vec<&str> = req[0].split_whitespace().collect();
         let path = chunks[1]; //ex: /echo/abc
+
+        dbg!(&path);
 
         let headers: BTreeMap<_, _> = req
             .iter()

@@ -5,8 +5,6 @@ use crate::request::HTTPRequest;
 pub fn echo_handler(stream: &mut TcpStream, req: &HTTPRequest) {
     let pathwithdata: Vec<&str> = req.path.splitn(3, "/").filter(|x| x.len() > 0).collect();
 
-    dbg!(req);
-
     let contentlength = format!("Content-length: {}\r\n", pathwithdata[1].len());
     let msg = vec![
         "HTTP/1.1 200 OK\r\n",
