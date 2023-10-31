@@ -1,8 +1,12 @@
-// Uncomment this block to pass the first stage
+use anyhow::Result;
+use request::HTTPRequest;
 use std::{
-    io::{BufRead, BufReader, Write},
+    io::Write,
     net::{TcpListener, TcpStream},
 };
+
+mod handler;
+mod request;
 
 fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -13,7 +17,7 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(mut _stream) => {
-                handle_connection(_stream);
+                let _ = handle_connection(_stream);
             }
             Err(e) => {
                 println!("error: {}", e);
@@ -22,74 +26,25 @@ fn main() {
     }
 }
 
-fn handle_connection(mut stream: TcpStream) {
-    let buf_reader = BufReader::new(&mut stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
-    let chunks: Vec<&str> = request_line.split_whitespace().collect();
+fn handle_connection(mut stream: TcpStream) -> Result<()> {
+    let req = HTTPRequest::from(&stream);
 
-    let path = chunks[1]; //ex: /echo/abc
+    let path: &str = &req.path;
 
-    let pathwithdata: Vec<&str> = path.splitn(3, "/").filter(|x| x.len() > 0).collect();
-
-    dbg!(&path);
-    dbg!(&pathwithdata);
-
-    let containecho = path.contains("echo");
-
-    match containecho {
-        true => {
-            let contentlength = format!("Content-length: {}\r\n", pathwithdata[1].len());
-            let msg = vec![
-                "HTTP/1.1 200 OK\r\n",
-                "Content-Type: text/plain\r\n",
-                &contentlength,
-                "\r\n",
-                pathwithdata[1],
-            ];
-
+    match path {
+        a if a.starts_with("/echo") => handler::echo_handler(&mut stream, &req),
+        a if a.starts_with("/user-agent") => handler::user_agent_handler(&mut stream, &req),
+        "/" => {
             stream
-                .write_all(handle_content(&msg).as_bytes())
+                .write("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
                 .expect("Unable to write to stream");
         }
-        false => {
-            match path {
-                "/" => stream
-                    .write("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
-                    .expect("Unable to write to stream"),
-                _ => stream
-                    .write("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
-                    .expect("Unable to write to stream"),
-            };
+        _ => {
+            stream
+                .write("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
+                .expect("Unable to write to stream");
         }
     }
-}
 
-fn handle_content(val: &Vec<&str>) -> String {
-    let mut result = String::new();
-
-    for i in 0..val.len() {
-        result.push_str(val[i]);
-    }
-
-    result
-}
-
-#[cfg(test)]
-mod test {
-    use crate::handle_content;
-
-    #[test]
-    fn test_handle_content() {
-        let contentlength = format!("Content-length: {}\r\n\r\n", 10);
-        let res = handle_content(&vec![
-            "HTTP/1.1 200 OK\r\n\r\n",
-            "Content-Type: text/plain\r\n\r\n",
-            &contentlength,
-            "this-is-the-message\r\n\r\n",
-        ]);
-
-        dbg!(&res);
-
-        assert!(res.len() > 0)
-    }
+    Ok(())
 }
