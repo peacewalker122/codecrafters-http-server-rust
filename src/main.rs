@@ -17,7 +17,7 @@ fn main() {
 
     println!("[INFO] Starting Server AT :4221");
 
-    let _unintended = check_flag("--directory").unwrap();
+    // let _unintended = check_flag("--directory").unwrap();
 
     for stream in listener.incoming() {
         let _thread = thread::spawn(|| match stream {
@@ -51,6 +51,7 @@ fn handle_connection(mut stream: TcpStream) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn check_flag(flag: &str) -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
 

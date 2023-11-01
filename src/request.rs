@@ -44,14 +44,17 @@ impl From<&TcpStream> for HTTPRequest {
             })
             .collect();
 
-        let dir = parse_folder(std::env::args()).unwrap();
+        let dir = match parse_folder(std::env::args()) {
+            Ok(x) => Some(x),
+            Err(_x) => None,
+        };
 
         Self {
             path: path.to_string(),
             method: chunks[0].to_string(),
             body: String::new(), //TODO: IMPLEMENT
             header: headers,
-            folder: Some(dir),
+            folder: dir,
         }
     }
 }
