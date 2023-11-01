@@ -10,12 +10,12 @@ pub struct HTTPRequest {
     pub method: String,
     pub body: String,
     pub header: BTreeMap<String, String>,
+
+    pub folder: Option<String>,
 }
 
 impl From<&TcpStream> for HTTPRequest {
     fn from(mut stream: &TcpStream) -> Self {
-        // it's only print the debug when the request were closed or canceled. why?
-        // possible because of it can't read the EOF from the request.
         let mut reader = BufReader::new(&mut stream);
         let received = reader.fill_buf().unwrap().to_vec();
 
@@ -35,8 +35,6 @@ impl From<&TcpStream> for HTTPRequest {
         let chunks: Vec<&str> = req[0].split_whitespace().collect();
         let path = chunks[1]; //ex: /echo/abc
 
-        dbg!(&path);
-
         let headers: BTreeMap<_, _> = req
             .iter()
             .filter(|x| x.contains(":"))
@@ -46,11 +44,26 @@ impl From<&TcpStream> for HTTPRequest {
             })
             .collect();
 
+        let dir = parse_folder(std::env::args()).unwrap();
+
         Self {
             path: path.to_string(),
             method: chunks[0].to_string(),
             body: String::new(), //TODO: IMPLEMENT
             header: headers,
+            folder: Some(dir),
         }
     }
+}
+
+fn parse_folder(arg: std::env::Args) -> Result<String, String> {
+    let arg: Vec<String> = arg.collect();
+
+    if let Some(x) = arg.iter().position(|x| x == "--directory") {
+        if x + 1 < arg.len() {
+            return Ok(arg[x + 1].clone());
+        }
+    }
+
+    Err("no --directory value provided".to_string())
 }

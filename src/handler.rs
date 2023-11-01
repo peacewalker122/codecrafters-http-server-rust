@@ -1,4 +1,9 @@
-use std::{io::Write, net::TcpStream};
+use std::{
+    fs::File,
+    io::{Read, Write},
+    net::TcpStream,
+    path::Path,
+};
 
 use crate::request::HTTPRequest;
 
@@ -34,6 +39,42 @@ pub fn user_agent_handler(stream: &mut TcpStream, req: &HTTPRequest) {
         .expect("Unable to write to stream");
 }
 
+pub fn get_file(stream: &mut TcpStream, req: &HTTPRequest) {
+    let pathwithdata: Vec<&str> = req.path.splitn(3, "/").filter(|x| x.len() > 0).collect();
+
+    if let Some(folderpath) = &req.folder {
+        let filepath = Path::new(folderpath).join(pathwithdata[1]);
+
+        match filepath.exists() {
+            true => {
+                let mut file = File::open(filepath).unwrap();
+                let mut buf = vec![];
+                Read::read_to_end(&mut file, &mut buf).unwrap();
+
+                let contentlength = format!("Content-length: {}\r\n", buf.len());
+
+                let msg = vec![
+                    "HTTP/1.1 200 OK\r\n",
+                    "Content-Type: application/octet-stream\r\n",
+                    &contentlength,
+                    "\r\n",
+                ];
+
+                stream
+                    .write_all(handle_content(&msg).as_bytes())
+                    .expect("Unable to write to stream");
+
+                stream.write_all(&buf).expect("unable to write to stream");
+            }
+            _ => {
+                stream
+                    .write("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
+                    .expect("Unable to write to stream");
+            }
+        }
+    }
+}
+
 fn handle_content(val: &Vec<&str>) -> String {
     let mut result = String::new();
 
@@ -42,6 +83,17 @@ fn handle_content(val: &Vec<&str>) -> String {
     }
 
     result
+}
+
+pub fn handle_error(mut stream: TcpStream, val: Option<String>) {
+    let _val = match val {
+        Some(x) => stream
+            .write(format!("HTTP/1.1 {} \r\n\r\n", x).as_bytes())
+            .expect("Unable to write to stream"),
+        None => stream
+            .write("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
+            .expect("Unable to write to stream"),
+    };
 }
 
 #[cfg(test)]
