@@ -2,7 +2,6 @@ use std::{
     collections::BTreeMap,
     io::{self, BufRead, BufReader},
     net::TcpStream,
-    string::FromUtf8Error,
 };
 
 #[derive(Debug)]
@@ -98,10 +97,10 @@ impl From<&TcpStream> for HTTPRequest {
             body: match headers.get("content-length") {
                 Some(_x) => {
                     let buf = reader.fill_buf().unwrap().to_vec();
-                    // dbg!(&val);
-
+                    dbg!(&buf);
+                    
                     reader.consume(buf.len());
-
+                    
                     String::from_utf8(buf).unwrap()
                 }
                 _ => String::new(),
