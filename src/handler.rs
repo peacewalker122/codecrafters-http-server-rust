@@ -1,5 +1,5 @@
 use std::{
-    fs::{File, self},
+    fs::{self, File},
     io::{Read, Write},
     net::TcpStream,
     path::Path,
@@ -92,7 +92,9 @@ pub fn download_file(stream: &mut TcpStream, req: &HTTPRequest) {
         //     }
         // };
 
-        match fs::write(&filepath,req.body.as_bytes()) {
+        dbg!(&req);
+
+        match fs::write(&filepath, req.body.as_bytes()) {
             Err(why) => eprintln!("couldn't create {}: {}", filepath.display(), why),
             _ => {}
         }
