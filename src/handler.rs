@@ -82,6 +82,8 @@ pub fn download_file(stream: &mut TcpStream, req: &HTTPRequest) {
     if let Some(folderpath) = &req.folder {
         let filepath = Path::new(folderpath).join(pathwithdata[1]);
 
+        dbg!(&filepath);
+
         let mut file = match File::create(&filepath) {
             Ok(file) => file,
             Err(why) => {
