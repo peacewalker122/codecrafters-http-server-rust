@@ -98,12 +98,9 @@ impl From<&TcpStream> for HTTPRequest {
             body: match headers.get("content-length") {
                 Some(_x) => {
                     let buf = reader.fill_buf().unwrap().to_vec();
+                    // dbg!(&val);
 
-                    let val = headers["content-length"].parse::<usize>().unwrap();
-
-                    dbg!(&val);
-
-                    reader.consume(val);
+                    reader.consume(buf.len());
 
                     String::from_utf8(buf).unwrap()
                 }
