@@ -94,7 +94,7 @@ impl From<&TcpStream> for HTTPRequest {
                 Some(x) => x,
                 _ => HTTPMethod::None,
             },
-            body: match headers.get("content-length") {
+            body: match headers.get("Content-Length") {
                 Some(_x) => {
                     let buf = reader.fill_buf().unwrap().to_vec();
                     dbg!(&buf);
