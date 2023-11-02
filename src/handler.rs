@@ -25,6 +25,7 @@ pub fn echo_handler(stream: &mut TcpStream, req: &HTTPRequest) {
 }
 
 pub fn user_agent_handler(stream: &mut TcpStream, req: &HTTPRequest) {
+    dbg!(&req);
     let contentlength = format!("Content-length: {}\r\n", req.header["User-Agent"].len());
     let msg = vec![
         "HTTP/1.1 200 OK\r\n",
@@ -73,6 +74,40 @@ pub fn get_file(stream: &mut TcpStream, req: &HTTPRequest) {
             }
         }
     }
+}
+
+pub fn download_file(stream: &mut TcpStream, req: &HTTPRequest) {
+    let pathwithdata: Vec<&str> = req.path.splitn(3, "/").filter(|x| x.len() > 0).collect();
+
+    if let Some(folderpath) = &req.folder {
+        let filepath = Path::new(folderpath).join(pathwithdata[1]);
+
+        let mut file = match File::create(&filepath) {
+            Ok(file) => file,
+            Err(why) => {
+                eprintln!("couldn't create {}: {}", filepath.display(), why);
+                return;
+            }
+        };
+
+        match file.write_all(req.body.as_bytes()) {
+            Err(why) => eprintln!("couldn't create {}: {}", filepath.display(), why),
+            _ => {}
+        }
+
+        let msg = vec!["HTTP/1.1 201 Created\r\n\r\n"];
+
+        stream
+            .write_all(handle_content(&msg).as_bytes())
+            .expect("Unable to write to stream");
+        return;
+    }
+
+    stream
+        .write("HTTP/1.1 500 Internal Server Error\r\n\r\n".as_bytes())
+        .expect("Unable to write to stream");
+
+    return;
 }
 
 fn handle_content(val: &Vec<&str>) -> String {

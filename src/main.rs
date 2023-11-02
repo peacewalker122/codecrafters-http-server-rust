@@ -1,9 +1,11 @@
 use anyhow::Result;
-use request::HTTPRequest;
+use itertools::Itertools;
+use request::{HTTPMethod, HTTPRequest};
 use std::{
     env,
     io::Write,
     net::{TcpListener, TcpStream},
+    sync::Arc,
     thread,
 };
 
@@ -11,18 +13,29 @@ mod handler;
 mod request;
 
 fn main() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    // println!("Logs from your program will appear here!");
     let listener = TcpListener::bind("0.0.0.0:4221").unwrap();
 
     println!("[INFO] Starting Server AT :4221");
 
-    // let _unintended = check_flag("--directory").unwrap();
+    let mut paramdir: Option<String> = None;
+
+    if env::args().len() > 1 && env::args().contains(&String::from("--directory")) {
+        paramdir = Some(
+            env::args()
+                .collect::<Vec<String>>()
+                .get(2)
+                .expect("can't find the argument value.")
+                .clone(),
+        )
+    }
+
+    let arcparamdir = Arc::new(paramdir);
 
     for stream in listener.incoming() {
+        let dir = Arc::clone(&arcparamdir);
         let _thread = thread::spawn(|| match stream {
             Ok(mut _stream) => {
-                let _ = handle_connection(_stream);
+                let _ = handle_connection(_stream, dir);
             }
             Err(e) => {
                 println!("error: {}", e);
@@ -31,15 +44,24 @@ fn main() {
     }
 }
 
-fn handle_connection(mut stream: TcpStream) -> Result<()> {
-    let req = HTTPRequest::from(&stream);
+fn handle_connection(mut stream: TcpStream, dir: Arc<Option<String>>) -> Result<()> {
+    let mut req = HTTPRequest::from(&stream);
 
     let path: &str = &req.path;
+
+    req.folder = match dir.as_ref().to_owned() {
+        Some(val) => Some(val),
+        _ => None,
+    };
 
     match path {
         a if a.starts_with("/echo") => handler::echo_handler(&mut stream, &req),
         a if a.starts_with("/user-agent") => handler::user_agent_handler(&mut stream, &req),
-        a if a.starts_with("/files") => handler::get_file(&mut stream, &req),
+        a if a.starts_with("/files") => match &req.method {
+            HTTPMethod::GET => handler::get_file(&mut stream, &req),
+            HTTPMethod::POST => handler::download_file(&mut stream, &req),
+            _ => handler::handle_error(stream, None),
+        },
         "/" => {
             stream
                 .write("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
