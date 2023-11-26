@@ -32,4 +32,4 @@ jobs:
       with:
           context: .
           push: true
-          tags: rust-http-server:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/rust-http-server:latest
