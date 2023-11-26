@@ -1,4 +1,4 @@
-FROM rust:1.73-buster
+FROM rust:1.73-alpine
 
 COPY . /app
 WORKDIR /app

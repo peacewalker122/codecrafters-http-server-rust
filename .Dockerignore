@@ -1,4 +1,8 @@
 .git
 .vscode
 .jetbrains
-
+./target
+./codecrafters.yml
+./README.md
+./assets
+./.github/
