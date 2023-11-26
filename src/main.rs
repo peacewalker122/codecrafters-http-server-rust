@@ -1,6 +1,7 @@
 use anyhow::Result;
-use itertools::Itertools;
+use log;
 use request::{HTTPMethod, HTTPRequest};
+use response::HTTPResponse;
 use std::{
     env,
     io::Write,
@@ -9,28 +10,21 @@ use std::{
     thread,
 };
 
+mod config;
 mod handler;
 mod request;
+mod response;
 
 fn main() {
-    let listener = TcpListener::bind("0.0.0.0:4221").unwrap();
-
-    println!("[INFO] Starting Server AT :4221");
+    let cfg = config::parse(env::args()).expect("failed to parse config.");
+    let listener = TcpListener::bind(&cfg.url).unwrap();
 
     let mut paramdir: Option<String> = None;
-
-    if env::args().len() > 1 && env::args().contains(&String::from("--directory")) {
-        paramdir = Some(
-            env::args()
-                .collect::<Vec<String>>()
-                .get(2)
-                .expect("can't find the argument value.")
-                .clone(),
-        )
-    }
+    paramdir = cfg.directory;
 
     let arcparamdir = Arc::new(paramdir);
 
+    println!("[INFO] server run at: {}", &cfg.url);
     for stream in listener.incoming() {
         let dir = Arc::clone(&arcparamdir);
         let _thread = thread::spawn(|| match stream {
@@ -44,8 +38,8 @@ fn main() {
     }
 }
 
-fn handle_connection(mut stream: TcpStream, dir: Arc<Option<String>>) -> Result<()> {
-    let mut req = HTTPRequest::from(&stream);
+fn handle_connection(stream: TcpStream, dir: Arc<Option<String>>) -> Result<()> {
+    let mut req = HTTPRequest::from(stream);
 
     let path: &str = &req.path;
 
@@ -55,34 +49,30 @@ fn handle_connection(mut stream: TcpStream, dir: Arc<Option<String>>) -> Result<
     };
 
     match path {
-        a if a.starts_with("/echo") => handler::echo_handler(&mut stream, &req),
-        a if a.starts_with("/user-agent") => handler::user_agent_handler(&mut stream, &req),
-        a if a.starts_with("/files") => match &req.method {
-            HTTPMethod::GET => handler::get_file(&mut stream, &req),
-            HTTPMethod::POST => handler::download_file(&mut stream, &req),
-            _ => handler::handle_error(stream, None),
+        a if a.starts_with("/echo") => path_handler(&mut req, handler::echo_handler),
+        a if a.starts_with("/user-agent") => path_handler(&mut req, handler::user_agent_handler),
+        a if a.starts_with("/files") => match &mut req.method {
+            HTTPMethod::GET => path_handler(&mut req, handler::get_file::<Vec<u8>>),
+            HTTPMethod::POST => path_handler(&mut req, handler::download_file),
+            _ => path_handler(&mut req, handler::handle_notfound),
         },
-        "/" => {
-            stream
-                .write("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
-                .expect("Unable to write to stream");
-        }
-        _ => handler::handle_error(stream, None),
+        "/" => path_handler(&mut req, handler::success),
+        _ => path_handler(&mut req, handler::handle_notfound),
     }
 
     Ok(())
 }
 
-#[allow(dead_code)]
-fn check_flag(flag: &str) -> Result<(), String> {
-    let args: Vec<String> = env::args().collect();
-
-    if args.iter().any(|arg| arg == flag) {
-        Ok(())
-    } else {
-        Err(format!(
-            "Flag '{}' is not present in the command-line arguments.",
-            flag
-        ))
+fn path_handler<T>(req: &mut HTTPRequest, mut f: T)
+where
+    T: FnMut(&mut HTTPRequest) -> Result<HTTPResponse<String>>,
+{
+    log::trace!("{:?}", &req);
+    match f(req) {
+        Ok(x) => req
+            .conn
+            .write_all(x.to_string().as_bytes())
+            .expect("failed to write to stream"),
+        Err(_) => {}
     }
 }

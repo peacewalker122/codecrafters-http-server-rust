@@ -23,6 +23,7 @@ impl HTTPMethod {
 
 #[derive(Debug)]
 pub struct HTTPRequest {
+    pub conn:TcpStream,
     pub path: String,
     pub method: HTTPMethod,
     pub body: String,
@@ -34,8 +35,8 @@ pub struct HTTPRequest {
 // need to update especially in how to parse the body.
 // to read body we can't relay again in the newline.
 // we need to make a custom parser for the http information such like METHOD,path,etc.
-impl From<&TcpStream> for HTTPRequest {
-    fn from(mut stream: &TcpStream) -> Self {
+impl From<TcpStream> for HTTPRequest {
+    fn from(mut stream: TcpStream) -> Self {
         let mut reader = BufReader::new(&mut stream);
         let mut received = vec![];
 
@@ -98,15 +99,16 @@ impl From<&TcpStream> for HTTPRequest {
                 Some(_x) => {
                     let buf = reader.fill_buf().unwrap().to_vec();
                     dbg!(&buf);
-                    
+
                     reader.consume(buf.len());
-                    
+
                     String::from_utf8(buf).unwrap()
                 }
                 _ => String::new(),
             },
             header: headers,
             folder: None,
+            conn: stream,
         }
     }
 }
