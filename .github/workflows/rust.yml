@@ -20,3 +20,16 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+    - name: Login to docker hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and Push Docker
+      uses: docker/build-push-action@v5
+      with:
+          context: .
+          push: true
+          tags: rust-http-server:latest
