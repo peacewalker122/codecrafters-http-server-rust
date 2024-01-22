@@ -11,5 +11,4 @@ target/
 
 # LOCAL
 .dockerignore
-/assets
 /.vscode
