@@ -23,7 +23,7 @@ impl HTTPMethod {
 
 #[derive(Debug)]
 pub struct HTTPRequest {
-    pub conn:TcpStream,
+    pub conn: TcpStream,
     pub path: String,
     pub method: HTTPMethod,
     pub body: String,
@@ -74,8 +74,6 @@ impl From<TcpStream> for HTTPRequest {
             })
             .unwrap();
         let req: Vec<&str> = req.split("\r\n").filter(|x| x.len() > 0).collect();
-
-        dbg!(&req);
 
         let chunks: Vec<&str> = req[0].split_whitespace().collect();
         let path = chunks[1]; //ex: /echo/abc

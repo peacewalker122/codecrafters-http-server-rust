@@ -1,5 +1,5 @@
 use anyhow::Result;
-use log;
+use log::{debug, info};
 use request::{HTTPMethod, HTTPRequest};
 use response::HTTPResponse;
 use std::{
@@ -19,12 +19,16 @@ fn main() {
     let cfg = config::parse(env::args()).expect("failed to parse config.");
     let listener = TcpListener::bind(&cfg.url).unwrap();
 
+    if cfg.verbose {
+        env_logger::init();
+    }
+
     let mut paramdir: Option<String> = None;
     paramdir = cfg.directory;
 
     let arcparamdir = Arc::new(paramdir);
 
-    println!("[INFO] server run at: {}", &cfg.url);
+    info!("starting server on {}", &cfg.url);
     for stream in listener.incoming() {
         let dir = Arc::clone(&arcparamdir);
         let _thread = thread::spawn(|| match stream {
@@ -67,12 +71,16 @@ fn path_handler<T>(req: &mut HTTPRequest, mut f: T)
 where
     T: FnMut(&mut HTTPRequest) -> Result<HTTPResponse<String>>,
 {
-    log::trace!("{:?}", &req);
+    debug!("Handling request: {:?}", req);
     match f(req) {
         Ok(x) => req
             .conn
             .write_all(x.to_string().as_bytes())
             .expect("failed to write to stream"),
-        Err(_) => {}
+        Err(e) => {
+            req.conn
+                .write_all(e.to_string().as_bytes())
+                .expect("failed to write to stream");
+        }
     }
 }
