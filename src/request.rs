@@ -23,7 +23,7 @@ impl HTTPMethod {
 
 #[derive(Debug)]
 pub struct HTTPRequest {
-    pub conn: TcpStream,
+    pub conn: Box<TcpStream>,
     pub path: String,
     pub method: HTTPMethod,
     pub body: String,
@@ -106,7 +106,7 @@ impl From<TcpStream> for HTTPRequest {
             },
             header: headers,
             folder: None,
-            conn: stream,
+            conn: Box::new(stream),
         }
     }
 }

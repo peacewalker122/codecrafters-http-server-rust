@@ -29,7 +29,9 @@ pub fn parse(mut args: impl Iterator<Item = String>) -> anyhow::Result<Config> {
                     res.directory = Some(val)
                 }
             }
-            a if a.eq("-v") || a.eq("--verbose") => res.verbose = true,
+            a if a.eq("-v") || a.eq("--verbose") || env::var("RUST_LOG").is_ok() => {
+                res.verbose = true
+            }
             _ => {}
         }
     }
